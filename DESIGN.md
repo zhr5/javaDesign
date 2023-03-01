@@ -3281,9 +3281,86 @@ class FooBar2 {
 
 ```
 
+### 21、二叉树非递归遍历
+
+```java
+//前序遍历 root-left-right
+class Solution {
+    public List<Integer> preorderTraversal(TreeNode root) {
+        List<Integer> res=new ArrayList(); 
+        if(root==null){
+            return res;
+        }
+        Stack<TreeNode> stack=new Stack();
+        while(!stack.isEmpty()||root!=null){
+            while(root!=null){
+                res.add(root.val);
+                stack.push(root);
+                root=root.left;
+            }
+            root=stack.pop();
+            root=root.right;
+        }
+        return res;
+    }
+    
+}
+
+//中序遍历 left-root-right
+
+class Solution {
+    public List<Integer> inorderTraversal(TreeNode root) {
+         List<Integer> res=new ArrayList(); 
+        if(root==null){
+            return res;
+        }
+        Stack<TreeNode> stack=new Stack();
+        while(!stack.isEmpty()||root!=null){
+            while(root!=null){
+                stack.push(root);
+                root=root.left;
+            }
+            root=stack.pop();
+            res.add(root.val);
+            root=root.right;
+        }
+        return res;
+    }
+}
 
 
+//后序遍历 left-right-root
 
+class Solution {
+    public List<Integer> postorderTraversal(TreeNode root) {
+        List<Integer> res=new ArrayList<>();
+        if(root==null)  return res;
+        TreeNode last=null;//记录上一个被访问的节点
+        TreeNode p=root;
+        Deque<TreeNode> stack=new ArrayDeque<>();
+        while(!stack.isEmpty()||p!=null){
+            if(p!=null){
+                stack.push(p);
+                p=p.left;
+            }else{
+                p=stack.peek();
+                if(p.right==null||p.right==last){//右子树为空或右子树刚被访问过
+                    p=stack.pop();
+                    res.add(p.val);
+                    last=p;
+                    p=null;
+                }else{
+                    p=p.right;
+                    stack.push(p);
+                    p=p.left;
+                }
+            }
+        }
+        return res;
+    }
+}
+
+```
 
 
 

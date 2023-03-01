@@ -213,14 +213,15 @@
       - [**1、Spring中的设计模式**](#1spring中的设计模式)
 - [八、SpringCloud篇](#八springcloud篇)
       - [Why SpringCloud](#why-springcloud)
-      - [Spring Boot](#spring-boot)
-      - [GateWay / Zuul](#gateway--zuul)
-      - [Eureka / Zookeeper](#eureka--zookeeper)
-      - [Feign / Ribbon](#feign--ribbon)
-      - [Hystrix / Sentinel](#hystrix--sentinel)
-      - [Config / Nacos](#config--nacos)
-      - [Bus / Stream](#bus--stream)
-      - [**Sleuth / Zipkin**](#sleuth--zipkin)
+          - [Spring Boot](#spring-boot)
+          - [GateWay / Zuul](#gateway--zuul)
+          - [Eureka / Zookeeper](#eureka--zookeeper)
+          - [Feign / Ribbon](#feign--ribbon)
+          - [Hystrix / Sentinel](#hystrix--sentinel)
+          - [Config / Nacos](#config--nacos)
+          - [Bus / Stream](#bus--stream)
+          - [**Sleuth / Zipkin**](#sleuth--zipkin)
+  
     - [**安全认证**](#安全认证)
     - [灰度发布](#灰度发布)
     - [多版本隔离](#多版本隔离)
@@ -257,6 +258,8 @@
 
 ### **TCP三次握手**
 
+![img](res/JAVA/v2-2a54823bd63e16674874aa46a67c6c72_720w.jpeg)
+
 ​	**三次握手过程：**
 
 ​		客户端——发送带有SYN标志的数据包——服务端       **一次握手**  Client进入syn_sent状态
@@ -278,6 +281,8 @@
 
 
 **TCP四次挥手过程 **
+
+![img](res/JAVA/v2-c7d4b5aca66560365593f57385ce9fa9_720w.webp)
 
 **四次挥手过程：**
 
@@ -1206,7 +1211,7 @@ for(Integer i:list){
 
 
 
-#### **5、序列化和反序列化** 
+#### **5、序列化和反序列化**
 
 ​		序列化的意思就是将对象的状态转化成字节流，以后可以通过这些值再生成相同状态的对象。对象序列化是对象持久化的一种实现方法，它是将对象的属性和方法转化为一种序列化的形式用于存储和传输。反序列化就是根据这些保存的信息重建对象的过程。
 
@@ -5038,6 +5043,10 @@ return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
 **DI 依赖注入**
 
 ​	DI:（Dependancy Injection：依赖注入)站在容器的角度，将对象创建依赖的其他对象注入到对象中。
+
+注入方式：
+
+常用的注入方式主要有三种：构造方法注入（Construct注入），setter注入，基于注解的注入（接口注入）
 
 
 
