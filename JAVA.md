@@ -389,11 +389,11 @@
 
   
 
-#### **6、TCP、UDP报文格式** 
+#### **6、TCP、UDP报文格式**
 
 ​	**TCP报文格式：**
 
-​		<img src="https://farm1.staticflickr.com/792/27194088468_4cb0141fc8_b.jpg" style="zoom: 67%;" />
+​		![img](res/JAVA/27194088468_4cb0141fc8_b.jpg)
 
 ​	**源端口号和目的端口号**：
 
@@ -441,7 +441,9 @@
 
 ​	**UDP报文格式：**
 
-​	<img src="https://appwk.baidu.com/naapi/doc/view?ih=482&o=png_6_0_0_176_917_504_247_892.979_1262.879&iw=986&ix=0&iy=0&aimw=986&rn=1&doc_id=182d935c3186bceb18e8bb77&pn=1&sign=b88bda03b9954e506622f97b8b2ae438&type=1&app_ver=2.9.8.2&ua=bd_800_800_IncredibleS_2.9.8.2_2.3.7&bid=1&app_ua=IncredibleS&uid=&cuid=&fr=3&Bdi_bear=WIFI&from=3_10000&bduss=&pid=1&screen=800_800&sys_ver=2.3.7" style="zoom:50%;" />
+![img](https://appwk.baidu.com/naapi/doc/view?ih=482&o=png_6_0_0_176_917_504_247_892.979_1262.879&iw=986&ix=0&iy=0&aimw=986&rn=1&doc_id=182d935c3186bceb18e8bb77&pn=1&sign=b88bda03b9954e506622f97b8b2ae438&type=1&app_ver=2.9.8.2&ua=bd_800_800_IncredibleS_2.9.8.2_2.3.7&bid=1&app_ua=IncredibleS&uid=&cuid=&fr=3&Bdi_bear=WIFI&from=3_10000&bduss=&pid=1&screen=800_800&sys_ver=2.3.7)
+
+
 
 ​	**端口号**：
 
@@ -459,7 +461,7 @@
 
 ​	**IP报文格式：**普通的IP首部长为20个字节，除非含有可选项字段。
 
-​				<img src="https://ss0.bdstatic.com/70cFuHSh_Q1YnxGkpoWK1HF6hhy/it/u=1614312792,1954581760&fm=26&gp=0.jpg" style="zoom:67%;" />
+​		![IP数据报格式示意图](res/JAVA/6-191106153044K1.gif)
 
 ​	**4位版本**：
 
@@ -2598,6 +2600,10 @@ private static ThreadLocal<SimpleDateFormat> format1 = new ThreadLocal<SimpleDat
 
 
 #### **8、HashMap线程安全**
+
+京东一面：为什么 HashMap 是线程不安全的？ - 沉默王二的文章 - 知乎 https://zhuanlan.zhihu.com/p/415612088
+
+
 
 ​	**死循环造成 CPU 100%**
 
