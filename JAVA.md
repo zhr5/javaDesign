@@ -499,7 +499,7 @@
 
 ​	**以太网报文格式：**
 
-![](https://ss0.bdstatic.com/70cFvHSh_Q1YnxGkpoWK1HF6hhy/it/u=2733576797,55677727&fm=26&gp=0.jpg)
+![](res/JAVA/f507302b6c274187b29e77cb28c2cfcf.png)
 
 ​	**目的地址和源地址：**
 
