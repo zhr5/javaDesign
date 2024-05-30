@@ -3286,7 +3286,7 @@ select * from student  A where A.age='18' and A.name='张三';
 
 **实现覆盖索引**：常见的方法是，将被查询的字段，建立到联合索引里去。
 
-
+**索引下推** :Index Condition Pushdown，简称ICP ，MySQL5.6之后为弥补索引失效做的性能优化，可以在存储引擎层对条件筛选，而不是回表查出完整数据到server层再去匹配查询条件
 
 #### 3、Explain及优化
 
