@@ -2711,6 +2711,95 @@ class Singleton{
 
 ​		是一种可重入锁，除了能完成 synchronized 所能完成的所有工作外，还提供了诸如可响应中断锁、可轮询锁请求、定时锁等避免多线程死锁的方法。默认为非公平锁，但可以初始化为公平锁； 通过方法 lock()与 unlock()来进行加锁与解锁操作；
 
+ReentrantLock：
+
+公平锁与非公平锁区别：
+
+lock:
+
+```java
+    static final class NonfairSync extends Sync {
+        private static final long serialVersionUID = 7316153563782823691L;
+
+        /**
+         * Performs lock.  Try immediate barge, backing up to normal
+         * acquire on failure.
+         */
+        final void lock() {
+            if (compareAndSetState(0, 1))
+                setExclusiveOwnerThread(Thread.currentThread());
+            else
+                acquire(1);//  --nonfairTryAcquire(1)
+        }
+
+        protected final boolean tryAcquire(int acquires) {
+            return nonfairTryAcquire(acquires);
+        }
+    }
+```
+```java
+final boolean nonfairTryAcquire(int acquires) {
+            final Thread current = Thread.currentThread();
+            int c = getState();
+            if (c == 0) {
+                if (compareAndSetState(0, acquires)) {
+                    setExclusiveOwnerThread(current);
+                    return true;
+                }
+            }
+            else if (current == getExclusiveOwnerThread()) {
+                int nextc = c + acquires;
+                if (nextc < 0) // overflow
+                    throw new Error("Maximum lock count exceeded");
+                setState(nextc);
+                return true;
+            }
+            return false;
+        }
+```
+```java
+    static final class FairSync extends Sync {
+        private static final long serialVersionUID = -3000897897090466540L;
+
+        final void lock() {
+            acquire(1);
+        }
+
+        /**
+         * Fair version of tryAcquire.  Don't grant access unless
+         * recursive call or no waiters or is first.
+         */
+        protected final boolean tryAcquire(int acquires) {
+            final Thread current = Thread.currentThread();
+            int c = getState();
+            if (c == 0) {
+                if (!hasQueuedPredecessors() &&
+                    compareAndSetState(0, acquires)) {
+                    setExclusiveOwnerThread(current);
+                    return true;
+                }
+            }
+            else if (current == getExclusiveOwnerThread()) {
+                int nextc = c + acquires;
+                if (nextc < 0)
+                    throw new Error("Maximum lock count exceeded");
+                setState(nextc);
+                return true;
+            }
+            return false;
+        }
+    }
+```
+
+
+```java
+    public final void acquire(int arg) {
+        if (!tryAcquire(arg) &&
+            acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+            selfInterrupt();
+    }
+```
+
 **CountDownLatch：**
 
 ​		通过计数法（倒计时器），让一些线程堵塞直到另一个线程完成一系列操作后才被唤醒；该⼯具通常⽤来控制线程等待，它可以让某⼀个线程等待直到倒计时结束，再开始执⾏。具体可以使用countDownLatch.await()来等待结果。多用于多线程信息汇总。
@@ -3142,9 +3231,9 @@ InnoDB 支持多粒度锁（multiple granularity locking），它允许行级锁
 
 
 
-间隙锁在可重复读隔离级别下才有效，**加锁规则，包含了两个“原则”、两个“优化”和一个“bug”。**
+间隙锁在可重复读隔离级别下才有效，加锁规则，**两个“原则”、两个“优化”和一个“bug”。**
 
-1. 原则 1：加锁的基本单位是 next-key lock。next-key lock 是前开后闭区间。
+1. 原则 1：加锁的基本单位是 next-key lock，next-key lock 是前开后闭区间。
 2. 原则 2：查找过程中访问到的对象才会加锁。
 3. 优化 1：索引上的等值查询，给唯一索引加锁的时候，next-key lock 退化为行锁。
 4. 优化 2：索引上的等值查询，向右遍历时且最后一个值不满足等值条件的时候，next-key lock 退化为间隙锁。
@@ -3152,7 +3241,11 @@ InnoDB 支持多粒度锁（multiple granularity locking），它允许行级锁
 
 
 
-#### **6、MVCC多版本并发控制** 
+
+
+
+
+#### **6、MVCC多版本并发控制**
 
 ​		MVCC是一种多版本并发控制机制，通过事务的可见性看到自己预期的数据，能降低其系统开销.（RC和RR级别工作）
 
