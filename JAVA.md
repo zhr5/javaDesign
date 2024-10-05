@@ -870,7 +870,7 @@ class LRUCache {
 
 
 
-#### **2、死锁条件、解决方式。** 
+#### **2、死锁条件、解决方式。**
 
 ​	死锁是指两个或两个以上进程在执行过程中，因争夺资源而造成的下相互等待的现象；
 
@@ -956,7 +956,202 @@ CPU load（系统负载）高可能由以下原因导致：
 
    
    
-   ### IO
+   ### **UNIX IO模型**
+   
+   #### 阻塞式 I/O
+   
+   ![img](images/JAVA/java-io-model-0.png)
+   
+   #### 非阻塞式 I/O
+   
+   ![img](images/JAVA/java-io-model-1.png)
+   
+   #### I/O 多路复用
+   
+   ![img](images/JAVA/java-io-model-2.png)
+   
+   #### select
+   
+   select系统调用的函数定义如下。
+   
+   ```text
+   int select(
+       int nfds,
+       fd_set *readfds,
+       fd_set *writefds,
+       fd_set *exceptfds,
+       struct timeval *timeout);
+   // nfds:监控的文件描述符集里最大文件描述符加1
+   // readfds：监控有读数据到达文件描述符集合，传入传出参数
+   // writefds：监控写数据到达文件描述符集合，传入传出参数
+   // exceptfds：监控异常发生达文件描述符集合, 传入传出参数
+   // timeout：定时阻塞监控时间，3种情况
+   //  1.NULL，永远等下去
+   //  2.设置timeval，等待固定时间
+   //  3.设置timeval里时间均为0，检查描述字后立即返回，轮询
+   ```
+   
+   服务端代码，这样来写。
+   
+   首先一个线程不断接受客户端连接，并把 socket 文件描述符放到一个 list 里。
+   
+   ```text
+   while(1) {
+     connfd = accept(listenfd);
+     fcntl(connfd, F_SETFL, O_NONBLOCK);
+     fdlist.add(connfd);
+   }
+   ```
+   
+   然后，另一个线程不再自己遍历，而是调用 select，将这批文件描述符 list 交给操作系统去遍历。
+   
+   ```text
+   while(1) {
+     // 把一堆文件描述符 list 传给 select 函数
+     // 有已就绪的文件描述符就返回，nready 表示有多少个就绪的
+     nready = select(list);
+     ...
+   }
+   ```
+   
+   不过，当 select 函数返回后，用户依然需要遍历刚刚提交给操作系统的 list。
+   
+   只不过，操作系统会将准备就绪的文件描述符做上标识，用户层将不会再有无意义的系统调用开销。
+   
+   ```text
+   while(1) {
+     nready = select(list);
+     // 用户层依然要遍历，只不过少了很多无效的系统调用
+     for(fd <-- fdlist) {
+       if(fd != -1) {
+         // 只读已就绪的文件描述符
+         read(fd, buf);
+         // 总共只有 nready 个已就绪描述符，不用过多遍历
+         if(--nready == 0) break;
+       }
+     }
+   }
+   ```
+   
+   正如刚刚的动图中所描述的，其直观效果如下。
+   
+   
+   
+   ![动图封面](images/JAVA/v2-320be0c91e2a376199b1d5eef626758e_720w.jpg)
+   
+   <video class="ztext-gif GifPlayer-gif2mp4 css-1xeqk96" src="https://vdn6.vzuu.com/SD/349279b4-9119-11eb-85d0-1278b449b310.mp4?pkey=AAVFzdrezuNFxh7D8-ESWevEJfp_TBvJCFTxNFOsHN0qYvoYTFPnD0DEqHh4s1DLIeQdHCNkcYCzz4BRZ8v-kyZa&amp;bu=078babd7&amp;c=avc.0.0&amp;expiration=1728118445&amp;f=mp4&amp;pu=078babd7&amp;v=ks6" data-thumbnail="https://picx.zhimg.com/50/v2-320be0c91e2a376199b1d5eef626758e_720w.jpg?source=2c26e567" poster="https://picx.zhimg.com/50/v2-320be0c91e2a376199b1d5eef626758e_720w.jpg?source=2c26e567" data-size="normal" preload="metadata" loop="" playsinline=""></video>
+   
+   
+   
+   
+   
+   可以看出几个细节：
+   
+   \1. select 调用需要传入 fd 数组，需要拷贝一份到内核，高并发场景下这样的拷贝消耗的资源是惊人的。（可优化为不复制）
+   
+   \2. select 在内核层仍然是通过遍历的方式检查文件描述符的就绪状态，是个同步过程，只不过无系统调用切换上下文的开销。（内核层可优化为异步事件通知）
+   
+   \3. select 仅仅返回可读文件描述符的个数，具体哪个可读还是要用户自己遍历。（可优化为只返回给用户就绪的文件描述符，无需用户做无效的遍历）
+   
+   
+   
+   #### poll
+   
+   poll 也是操作系统提供的系统调用函数。
+   
+   ```text
+   int poll(struct pollfd *fds, nfds_tnfds, int timeout);
+   
+   struct pollfd {
+     intfd; /*文件描述符*/
+     shortevents; /*监控的事件*/
+     shortrevents; /*监控事件中满足条件返回的事件*/
+   };
+   ```
+   
+   它和 select 的主要区别就是，去掉了 select 只能监听 1024 个文件描述符的限制。
+   
+   
+   
+   #### epoll
+   
+   epoll 是最终的大 boss，它解决了 select 和 poll 的一些问题。
+   
+   还记得上面说的 select 的三个细节么？
+   
+   \1. select 调用需要传入 fd 数组，需要拷贝一份到内核，高并发场景下这样的拷贝消耗的资源是惊人的。（可优化为不复制）
+   
+   \2. select 在内核层仍然是通过遍历的方式检查文件描述符的就绪状态，是个同步过程，只不过无系统调用切换上下文的开销。（内核层可优化为异步事件通知）
+   
+   \3. select 仅仅返回可读文件描述符的个数，具体哪个可读还是要用户自己遍历。（可优化为只返回给用户就绪的文件描述符，无需用户做无效的遍历）
+   
+   所以 epoll 主要就是针对这三点进行了改进。
+   
+   \1. 内核中保存一份文件描述符集合，无需用户每次都重新传入，只需告诉内核修改的部分即可。
+   
+   \2. 内核不再通过轮询的方式找到就绪的文件描述符，而是通过异步 IO 事件唤醒。
+   
+   \3. 内核仅会将有 IO 事件的文件描述符返回给用户，用户也无需遍历整个文件描述符集合。
+   
+   作者：低并发编程
+   链接：https://www.zhihu.com/question/59975081/answer/1932776593
+   来源：知乎
+   著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+   
+   
+   
+   具体，操作系统提供了这三个函数。
+   
+   ```text
+   第一步，创建一个 epoll 句柄
+   int epoll_create(int size);
+   第二步，向内核添加、修改或删除要监控的文件描述符。
+   int epoll_ctl(
+     int epfd, int op, int fd, struct epoll_event *event);
+   第三步，类似发起了 select() 调用
+   int epoll_wait(
+     int epfd, struct epoll_event *events, int max events, int timeout);
+   ```
+   
+   使用起来，其内部原理就像如下一般丝滑。
+   
+   
+   
+   ![动图封面](images/JAVA/v2-70f8e9bc1a028d252c01c32329e49341_720w.jpg)
+   
+   <video class="ztext-gif GifPlayer-gif2mp4 css-1xeqk96" src="https://vdn6.vzuu.com/SD/346e30f4-9119-11eb-bb4a-4a238cf0c417.mp4?pkey=AAVBAGRwC00h87BbFdnvbTKNexfKD4Lu2E5xCBMcPDpxRIIJUcCXLV0Bh1V585z69vkQLf3nccaP7taRE7iZJj36&amp;bu=078babd7&amp;c=avc.0.0&amp;expiration=1728118447&amp;f=mp4&amp;pu=078babd7&amp;v=ks6" data-thumbnail="https://pic1.zhimg.com/50/v2-70f8e9bc1a028d252c01c32329e49341_720w.jpg?source=2c26e567" poster="https://pic1.zhimg.com/50/v2-70f8e9bc1a028d252c01c32329e49341_720w.jpg?source=2c26e567" data-size="normal" preload="metadata" loop="" playsinline=""></video>
+   
+   
+   
+   
+   
+   ### IO多路复用工作模式
+   
+   epoll 的描述符事件有两种触发模式: LT(level trigger)和 ET(edge trigger)。
+   
+   #### 1. LT 模式
+   
+   当 epoll_wait() 检测到描述符事件到达时，将此事件通知进程，进程可以不立即处理该事件，下次调用 epoll_wait() 会再次通知进程。是默认的一种模式，并且同时支持 Blocking 和 No-Blocking。
+   
+   #### 2. ET 模式
+   
+   和 LT 模式不同的是，通知之后进程必须立即处理事件，下次再调用 epoll_wait() 时不会再得到事件到达的通知。
+   
+   很大程度上减少了 epoll 事件被重复触发的次数，因此效率要比 LT 模式高。只支持 No-Blocking，以避免由于一个文件句柄的阻塞读/阻塞写操作把处理多个文件描述符的任务饿死。
+   
+   ------
+   
+   
+   
+   #### 信号驱动 I/O
+   
+   ![img](images/JAVA/java-io-model-3.png)
+   
+   #### 异步 I/O
+   
+   ![img](images/JAVA/java-io-model-4.png)
+   
+   
    
    
    
@@ -1237,7 +1432,9 @@ for(Integer i:list){
 
 **put操作步骤：**
 
-​				<img src="https://s0.lgstatic.com/i/image3/M01/73/D9/CgpOIF5rDYmATP43AAB3coc0R64799.png" alt="img" style="zoom:67%;" />
+![image-20241004175643870](images/JAVA/image-20241004175643870.png)
+
+​				
 
 ​	1、判断数组是否为空，为空进行初始化;
 
@@ -1273,6 +1470,33 @@ for(Integer i:list){
 
 
 
+在并发环境下，`HashMap`不安全主要有以下几个原因：
+
+**一、数据丢失**
+
+1. 同时扩容导致：
+   - 在并发情况下，如果多个线程同时对`HashMap`进行扩容操作，可能会导致数据丢失。
+   - 例如，当一个线程正在进行扩容，将元素从旧数组转移到新数组时，另一个线程可能也在进行插入操作，并且计算出的插入位置在旧数组中。此时，第一个线程可能会覆盖第二个线程插入的元素，导致数据丢失。
+2. 链表转换为红黑树时的冲突：
+   - 当`HashMap`中的链表长度超过一定阈值时，会将链表转换为红黑树。在并发环境下，多个线程同时进行插入操作，可能会导致链表结构的混乱，从而在转换为红黑树时出现错误，造成数据丢失。
+
+**二、死循环**
+
+1. 并发扩容时的链表结构变化：
+   - 在并发扩容过程中，由于多个线程同时操作，可能会导致链表形成环形结构。
+   - 例如，线程 A 和线程 B 同时进行扩容，线程 A 正在将一个节点从旧数组的位置转移到新数组的位置，此时线程 B 也在处理同一个链表中的另一个节点。如果线程 B 在处理过程中修改了链表的结构，使得线程 A 处理的节点的下一个节点指向了已经被处理过的节点，就可能形成环形链表。
+   - 当后续线程在遍历这个链表时，就会陷入死循环，导致 CPU 使用率飙升。
+
+**三、数据不一致**
+
+1. 读写冲突：
+   - 在并发环境下，一个线程正在进行读取操作，而另一个线程同时进行写入操作，可能会导致读取到不一致的数据。
+   - 例如，线程 A 正在读取一个`HashMap`中的某个键对应的值，此时线程 B 正在进行插入或删除操作，修改了`HashMap`的内部结构。线程 A 可能会读取到部分旧数据和部分新数据，或者读取到错误的数据。
+
+综上所述，在并发环境下使用`HashMap`可能会出现数据丢失、死循环和数据不一致等问题，因此它是不安全的。在并发场景下，可以使用`ConcurrentHashMap`等线程安全的集合类来替代`HashMap`。
+
+
+
 #### **4、ConcurrentHashMap **
 
 ​		可以通过**ConcurrentHashMap** 和 **Hashtable**来实现线程安全；Hashtable 是原始API类，通过synchronize同步修饰，效率低下；ConcurrentHashMap 通过分段锁实现，效率较比Hashtable要好；
@@ -1281,9 +1505,15 @@ for(Integer i:list){
 
 ​		**JDK1.7的 ConcurrentHashMap** 底层采⽤ 分段的数组+链表 实现；采用 **分段锁**（Sagment） 对整个桶数组进⾏了分割分段(Segment默认16个)，每⼀把锁只锁容器其中⼀部分数据，多线程访问容器⾥不同数据段的数据，就不会存在锁竞争，提⾼并发访问率。
 
+![img](images/JAVA/java-thread-x-concurrent-hashmap-1.png)
+
 ![](https://ss0.bdstatic.com/70cFuHSh_Q1YnxGkpoWK1HF6hhy/it/u=1035283471,1167301443&fm=26&gp=0.jpg)
 
 ​		**JDK1.8的 ConcurrentHashMap** 采⽤的数据结构跟HashMap1.8的结构⼀样，数组+链表/红⿊树；摒弃了Segment的概念，⽽是直接⽤ Node 数组+链表+红⿊树的数据结构来实现，通过并发控制 **synchronized 和CAS**来操作保证线程的安全。
+
+![img](images/JAVA/java-thread-x-concurrent-hashmap-2.png)
+
+
 
 
 
