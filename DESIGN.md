@@ -497,6 +497,64 @@ Docker仓库可以分为**公开仓库 （Public）**和**私有仓库（Private
 
 
 
+### 网络模式
+
+**一、bridge 模式（桥接模式）**
+
+
+
+1. 简介：
+   - 这是 Docker 的默认网络模式。此模式下，Docker 为容器创建独立的网络命名空间，并通过 veth-pair（虚拟网络接口对）将容器连接到 Docker 宿主机上的一个虚拟网桥（通常是 docker0）。
+   - 容器在这种模式下可以通过 IP 地址相互访问，也可以通过端口映射与外部网络进行通信。
+2. 特点：
+   - 容器拥有独立的 IP 地址，但该 IP 地址仅在 Docker 宿主机所在的网络环境中可见。
+   - 容器之间可以通过 IP 地址直接通信，但需要注意容器的 IP 地址可能会在容器重启时发生变化。
+   - 通过端口映射可以将容器内的服务暴露给宿主机所在的外部网络，方便外部应用访问容器内的服务。
+
+
+
+**二、host 模式**
+
+
+
+1. 简介：
+   - 在这种模式下，容器将不会拥有独立的网络命名空间，而是直接使用宿主机的网络命名空间。
+   - 容器将与宿主机共享网络栈，包括 IP 地址、端口、网络设备等。
+2. 特点：
+   - 容器与宿主机共享网络，容器内的服务可以直接使用宿主机的 IP 地址和端口进行通信，无需进行端口映射。
+   - 容器的网络性能与宿主机基本一致，因为没有额外的网络隔离和封装。
+   - 由于容器与宿主机共享网络，可能会存在端口冲突等问题，需要谨慎使用。
+
+
+
+**三、none 模式**
+
+
+
+1. 简介：
+   - 在这种模式下，Docker 不为容器创建任何网络配置。容器将只有一个 loopback 网络接口，无法与外部网络进行通信。
+2. 特点：
+   - 容器完全没有网络连接，适用于需要在隔离环境中运行且不需要网络通信的场景。
+   - 可以通过其他方式为容器提供网络连接，例如在容器启动后手动配置网络或者使用第三方网络插件。
+
+
+
+**四、container 模式**
+
+
+
+1. 简介：
+
+   - 这种模式下，新创建的容器将与一个已经存在的容器共享网络命名空间。
+   - 两个容器将共享 IP 地址、端口、网络设备等网络资源。
+
+2. 特点：
+
+   - 可以方便地在多个容器之间共享网络配置，例如在一个容器中运行数据库服务，另一个容器中运行应用程序，应用程序容器可以直接通过共享的网络访问数据库容器。
+   - 共享网络的容器之间通信非常方便，但也可能会带来一些安全风险，需要谨慎使用。
+
+   
+
 ### 基本操作
 
 **镜像**
@@ -3304,6 +3362,24 @@ class Solution {
         return res;
     }
     
+    public static void preorderTraversal1(TreeNode root) {
+        if (root == null) {
+            return;
+        }
+        Stack<TreeNode> stack = new Stack<>();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            TreeNode node = stack.pop();
+            System.out.print(node.val + " ");
+            if (node.right!= null) {
+                stack.push(node.right);
+            }
+            if (node.left!= null) {
+                stack.push(node.left);
+            }
+        }
+    }
+    
 }
 
 //中序遍历 left-root-right
@@ -3333,27 +3409,26 @@ class Solution {
 
 class Solution {
     public List<Integer> postorderTraversal(TreeNode root) {
-        List<Integer> res=new ArrayList<>();
-        if(root==null)  return res;
-        TreeNode last=null;//记录上一个被访问的节点
-        TreeNode p=root;
-        Deque<TreeNode> stack=new ArrayDeque<>();
-        while(!stack.isEmpty()||p!=null){
-            if(p!=null){
-                stack.push(p);
-                p=p.left;
-            }else{
-                p=stack.peek();
-                if(p.right==null||p.right==last){//右子树为空或右子树刚被访问过
-                    p=stack.pop();
-                    res.add(p.val);
-                    last=p;
-                    p=null;
-                }else{
-                    p=p.right;
-                    stack.push(p);
-                    p=p.left;
-                }
+		List<Integer> res = new ArrayList<Integer>();
+        if (root == null) {
+            return res;
+        }
+
+        Deque<TreeNode> stack = new LinkedList<TreeNode>();
+        TreeNode prev = null;//记录上一个访问的节点
+        while (root != null || !stack.isEmpty()) {
+            while (root != null) {
+                stack.push(root);
+                root = root.left;
+            }
+            root = stack.pop();
+            if (root.right == null || root.right == prev) {
+                res.add(root.val);
+                prev = root;
+                root = null;
+            } else {
+                stack.push(root);
+                root = root.right;
             }
         }
         return res;
