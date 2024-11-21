@@ -2695,8 +2695,192 @@ public class LRUCache {
     }
 }
 ```
+```java
+class LRUCache {
+
+    public class DLinkedNode {
+            int key;
+            int value;
+            DLinkedNode prev;
+            DLinkedNode next;
+            public DLinkedNode() {}
+            public DLinkedNode(int _key, int _value) {key = _key; value = _value;}
+       }
+       /*双向链表节点*/
+
+        /*哈希表定义*/
+        private Map<Integer, DLinkedNode> cache = new HashMap<Integer, DLinkedNode>();
+        /*key--node*/
+        private int capacity;
+        private DLinkedNode head, tail;
 
 
+    public LRUCache(int capacity) {
+        this.capacity=capacity;
+        head=new DLinkedNode();
+        tail=new DLinkedNode();
+        head.next=tail;
+        tail.prev=head;
+    }
+    
+    public int get(int key) {
+        DLinkedNode node=cache.get(key);
+        if(node==null) return -1;
+        moveToHead(node);
+        return node.value;
+    }
+    
+    public void put(int key, int value) {
+        DLinkedNode node = cache.get(key);
+        if(node==null){
+            //如果key不存在，创建一个新节点
+            DLinkedNode newNode=new DLinkedNode(key,value);
+            //添加到哈希表
+            cache.put(key,newNode);
+            //添加到双向链表头部
+            addToHead(newNode);
+            if(cache.size()>capacity){
+                //若超出容量，删除双向链表尾部节点，并拿到删除的key去哈希表删除
+                DLinkedNode tail=removeTail();
+                //删除哈希表对应的项
+                cache.remove(tail.key);
+            }
+        }else{
+            //如果key存在，先通过哈希表定位，再修改value，并移动到头部
+            node.value=value;
+            moveToHead(node);
+        }
+    }
+
+    /*
+    * 1.新增元素的操作--加入链表头部，若超过容量淘汰链表尾部
+    * 所以需要方法
+    * 1.移动某元素到头部=(删除该元素+新增元素到头部)
+    * 2.新增元素到头部 插入链表头节点后面的位置
+    * 3.尾部删除=(删除该元素+返回删除的值)
+    * 4.从链表中删除某元素 引用还在只是链表中没了(任意位置--这时候由于是双向链表所以可以在O(1)时间完成)
+    * */
+    private  void moveToHead(DLinkedNode node){
+        //1-从链表中删除
+        node.prev.next=node.next;
+        node.next.prev=node.prev;
+        //2-移动到链表头节点后面
+        node.prev=head;
+        node.next=head.next;
+        head.next.prev=node;
+        head.next=node;
+
+    }
+
+    private void addToHead(DLinkedNode node){
+        node.prev=head;
+        node.next=head.next;
+        head.next.prev=node;
+        head.next=node;
+    }
+
+    private DLinkedNode removeTail(){
+        DLinkedNode res=tail.prev;       
+        //从链表中删除
+        res.prev.next=res.next;
+        res.next.prev=res.prev;
+        
+        return res;
+    }
+}
+ ```
+
+### 16、手写LFUcache
+
+```java
+// 基于PriorityQueue
+import java.util.HashMap;
+import java.util.Map;
+import java.util.PriorityQueue;
+
+public class LFUCache {
+
+    // 缓存容量
+    private final int capacity;
+    // 用于存储键值对
+    private final Map<Integer, Integer> keyValueMap;
+    // 用于存储每个键的访问频率
+    private final Map<Integer, Integer> frequencyMap;
+    // 优先队列，用于按照访问频率和插入顺序排序节点
+    private final PriorityQueue<Node> priorityQueue;
+
+    // 内部节点类，用于存储键、值以及访问频率信息
+    private static class Node implements Comparable<Node> {
+        int key;
+        int value;
+        int frequency;
+
+        public Node(int key, int value, int frequency) {
+            this.key = key;
+            this.value = value;
+            this.frequency = frequency;
+        }
+
+        @Override
+        public int compareTo(Node other) {
+            // 先按照访问频率排序，如果频率相同，按照插入顺序（这里通过键来间接表示）排序
+            if (this.frequency!= other.frequency) {
+                return Integer.compare(this.frequency, other.frequency);
+            }
+            return Integer.compare(this.key, other.key);
+        }
+    }
+
+    public LFUCache(int capacity) {
+        this.capacity = capacity;
+        this.keyValueMap = new HashMap<>();
+        this.frequencyMap = new HashMap<>();
+        this.priorityQueue = new PriorityQueue<>();
+    }
+
+    public int get(int key) {
+        if (!keyValueMap.containsKey(key)) {
+            return -1;
+        }
+
+        // 获取当前键的访问频率并更新
+        int frequency = frequencyMap.get(key);
+        frequencyMap.put(key, frequency + 1);
+
+        // 更新优先队列中的节点信息
+        Node node = new Node(key, keyValueMap.get(key), frequency + 1);
+        priorityQueue.remove(new Node(key, 0, frequency));
+        priorityQueue.add(node);
+
+        return keyValueMap.get(key);
+    }
+
+    public void put(int key, int value) {
+        if (capacity == 0) {
+            return;
+        }
+
+        if (keyValueMap.containsKey(key)) {
+            keyValueMap.put(key, value);
+            // 调用get方法来更新访问频率等相关操作
+            get(key);
+            return;
+        }
+
+        if (keyValueMap.size() >= capacity) {
+            // 移除访问频率最低且最久未使用的键值对
+            Node evictNode = priorityQueue.poll();
+            keyValueMap.remove(evictNode.key);
+            frequencyMap.remove(evictNode.key);
+        }
+
+        // 添加新的键值对到缓存
+        keyValueMap.put(key, value);
+        frequencyMap.put(key, 1);
+        priorityQueue.add(new Node(key, value, 1));
+    }
+}
+```
 
 ```java
 //手写双向链表
