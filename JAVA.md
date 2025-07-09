@@ -3696,6 +3696,12 @@ select * from student  A where A.age='18' and A.name='张三';
 
 
 
+**MySQL架构**：
+
+![img](images/JAVA/0d2070e8f84c4801adbfa03bda1f98d9.png)
+
+
+
 #### **2、回表查询和覆盖索引** 
 
 **普通索引**（唯一索引+联合索引+全文索引）需要扫描两遍索引树
