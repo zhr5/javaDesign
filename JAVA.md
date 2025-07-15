@@ -4350,7 +4350,375 @@ EVCache 是线性扩展的，可以在一分钟之内完成扩容，在几分钟
 | SET    | SADD  | SREM   | SISMEMBER | SCARD | SINTER  | SUNION | SDIFF    | SPOP  | SMEMBERS  |
 | 事务   | MULTI | EXEC   | DISCARD   | WATCH | UNWATCH |        |          |       |           |
 
+### 一、String（字符串）类型命令
 
+#### 1. 基本操作
+
+- **SET key value [EX seconds] [PX milliseconds] [NX|XX]**
+  设置键值对，支持过期时间（`EX`秒或`PX`毫秒）和条件（`NX`仅当键不存在时设置，`XX`仅当键存在时设置）。
+
+  ```plaintext
+  SET name "Alice" EX 60    # 设置name为"Alice"，60秒后过期
+  SET counter 100 NX        # 仅当counter不存在时设置
+  ```
+
+- **GET key**
+  获取键对应的值，若键不存在返回`nil`。
+
+  ```plaintext
+  GET name    # 返回"Alice"
+  ```
+
+- **GETSET key newvalue**
+  设置新值并返回旧值。
+
+  ```plaintext
+  GETSET counter 200    # 先返回100，再将counter设为200
+  ```
+
+#### 2. 数值操作（原子性）
+
+- **INCR key** / **DECR key**
+  将键的值加 1 或减 1（值必须为整数）。
+
+  ```plaintext
+  INCR counter    # counter从200变为201
+  ```
+
+- **INCRBY key increment** / **DECRBY key decrement**
+  增加或减少指定数值。
+
+  ```plaintext
+  INCRBY counter 5    # counter变为206
+  ```
+
+#### 3. 批量操作
+
+- **MSET key1 value1 key2 value2 ...**
+  同时设置多个键值对。
+
+  ```plaintext
+  MSET user:1:name "Bob" user:1:age 30    # 批量设置用户信息
+  ```
+
+- **MGET key1 key2 ...**
+  同时获取多个键的值，返回数组。
+
+  ```plaintext
+  MGET user:1:name user:1:age    # 返回 ["Bob", "30"]
+  ```
+
+### 二、Hash（哈希）类型命令
+
+#### 1. 基本操作
+
+- **HSET key field value** / **HSETNX key field value**
+  设置哈希表中的字段值（`HSETNX`仅当字段不存在时设置）。
+
+  ```plaintext
+  HSET user:2 name "Charlie" age 25    # 设置用户信息
+  HSETNX user:2 name "David"           # 失败，name已存在
+  ```
+
+- **HGET key field** / **HMGET key field1 field2 ...**
+  获取单个或多个字段的值。
+
+  ```plaintext
+  HGET user:2 name    # 返回"Charlie"
+  HMGET user:2 name age    # 返回 ["Charlie", "25"]
+  ```
+
+#### 2. 批量操作与查询
+
+- **HMSET key field1 value1 field2 value2 ...**
+  批量设置哈希表中的多个字段。
+
+  ```plaintext
+  HMSET user:3 name "Eve" age 28 gender "female"
+  ```
+
+- **HGETALL key**
+  获取哈希表中所有字段和值（返回数组，交替显示字段和值）。
+
+  ```plaintext
+  HGETALL user:3    # 返回 ["name", "Eve", "age", "28", "gender", "female"]
+  ```
+
+- **HKEYS key** / **HVALS key**
+  获取所有字段名或所有值。
+
+  ```plaintext
+  HKEYS user:3    # 返回 ["name", "age", "gender"]
+  ```
+
+#### 3. 统计与删除
+
+- **HLEN key**
+  获取哈希表中字段的数量。
+
+  ```plaintext
+  HLEN user:3    # 返回3
+  ```
+
+- **HDEL key field1 field2 ...**
+  删除哈希表中的一个或多个字段。
+
+  ```plaintext
+  HDEL user:3 gender    # 删除gender字段
+  ```
+
+### 三、List（列表）类型命令
+
+#### 1. 插入与弹出
+
+- **LPUSH key value1 [value2 ...]** / **RPUSH key value1 [value2 ...]**
+  从列表左侧（头部）或右侧（尾部）插入一个或多个值。
+
+  ```plaintext
+  LPUSH tasks "task1"    # 列表：["task1"]
+  LPUSH tasks "task2"    # 列表：["task2", "task1"]
+  RPUSH tasks "task3"    # 列表：["task2", "task1", "task3"]
+  ```
+
+- **LPOP key** / **RPOP key**
+  从列表左侧或右侧弹出一个值（并删除）。
+
+  ```plaintext
+  LPOP tasks    # 返回"task2"，列表变为["task1", "task3"]
+  RPOP tasks    # 返回"task3"，列表变为["task1"]
+  ```
+
+#### 2. 查询与修改
+
+- **LRANGE key start stop**
+  获取列表指定区间的元素（闭区间，`-1`表示最后一个元素）。
+
+  ```plaintext
+  LRANGE tasks 0 -1    # 返回整个列表：["task1"]
+  ```
+
+- **LINDEX key index**
+  获取列表指定索引的元素。
+
+  ```plaintext
+  LINDEX tasks 0    # 返回"task1"
+  ```
+
+- **LLEN key**
+  获取列表长度
+
+  ```plaintext
+  LLEN tasks    # 返回1
+  ```
+
+#### 3. 特殊操作
+
+- **RPOPLPUSH source destination**
+  从源列表右侧弹出一个值，并插入到目标列表左侧。
+
+  ```plaintext
+  RPOPLPUSH tasks archive    # 将tasks的最后一个元素移到archive列表
+  ```
+
+- **LREM key count value**
+  删除列表中前`count`个值等于`value`的元素（`count>0`从左到右，`count<0`从右到左，`count=0`删除所有）。
+
+  ```plaintext
+  LREM tasks 2 "task1"    # 删除2个"task1"
+  ```
+
+### 四、Set（集合）类型命令
+
+#### 1. 基本操作
+
+- **SADD key member1 [member2 ...]**
+  向集合中添加一个或多个成员（重复成员会被忽略）。
+
+  ```plaintext
+  SADD tags "java" "redis" "database"    # 添加三个标签
+  ```
+
+- **SREM key member1 [member2 ...]**
+  从集合中删除一个或多个成员。
+
+  ```plaintext
+  SREM tags "java"    # 删除"java"标签
+  ```
+
+- **SISMEMBER key member**
+  判断成员是否存在于集合中（返回 1 表示存在，0 表示不存在）。
+
+  ```plaintext
+  SISMEMBER tags "redis"    # 返回1
+  ```
+
+#### 2. 统计与查询
+
+- **SCARD key**
+  获取集合的成员数量。
+
+  ```plaintext
+  SCARD tags    # 返回2
+  ```
+
+- **SMEMBERS key**
+  获取集合中所有成员（无序）。
+
+  ```plaintext
+  SMEMBERS tags    # 可能返回 ["redis", "database"]
+  ```
+
+#### 3. 集合运算
+
+- **SINTER key1 [key2 ...]**
+  计算多个集合的交集。
+
+  ```plaintext
+  SINTER tags1 tags2    # 返回tags1和tags2的交集
+  ```
+
+- **SUNION key1 [key2 ...]**
+  计算多个集合的并集。
+
+  ```plaintext
+  SUNION tags1 tags2    # 返回tags1和tags2的并集
+  ```
+
+- **SDIFF key1 [key2 ...]**
+  计算多个集合的差集（`key1`中有但其他集合中没有的元素）。
+
+  ```plaintext
+  SDIFF tags1 tags2    # 返回tags1-tags2的差集
+  ```
+
+- **SPOP key [count]**
+  随机弹出集合中的一个或多个成员（并删除）。
+
+  ```plaintext
+  SPOP tags    # 随机返回一个标签并删除
+  ```
+
+### 五、Sorted Set（有序集合）类型命令
+
+#### 1. 基本操作
+
+- **ZADD key score1 member1 [score2 member2 ...]**
+  向有序集合中添加成员及分数（分数用于排序）。
+
+  ```plaintext
+  ZADD users 100 "user1" 200 "user2" 150 "user3"    # 添加三个用户及分数
+  ```
+
+- **ZREM key member1 [member2 ...]**
+  从有序集合中删除一个或多个成员。
+
+  ```plaintext
+  ZREM users "user3"    # 删除user3
+  ```
+
+#### 2. 查询与统计
+
+- **ZSCORE key member**
+  获取成员的分数。
+
+  ```plaintext
+  ZSCORE users "user2"    # 返回200
+  ```
+
+- **ZCARD key**
+  获取有序集合的成员数量。
+
+  ```plaintext
+  ZCARD users    # 返回2
+  ```
+
+- **ZRANGE key start stop [WITHSCORES]**
+  按分数从小到大排序，获取指定区间的成员（`WITHSCORES`同时返回分数）。
+
+  ```plaintext
+  ZRANGE users 0 -1 WITHSCORES    # 返回 [["user1", 100], ["user2", 200]]
+  ```
+
+- **ZREVRANGE key start stop [WITHSCORES]**
+  按分数从大到小排序，获取指定区间的成员。
+
+  ```plaintext
+  ZREVRANGE users 0 0    # 返回 ["user2"]
+  ```
+
+- **ZRANK key member** / **ZREVRANK key member**
+  获取成员按分数从小到大或从大到小的排名（从 0 开始）。
+
+  ```plaintext
+  ZRANK users "user2"    # 返回1（第二小）
+  ZREVRANK users "user2"    # 返回0（第一大）
+  ```
+
+### 六、事务相关命令
+
+#### 1. 基本事务操作
+
+- **MULTI**
+  开启一个事务块，后续命令会被放入队列中，直到执行`EXEC`或`DISCARD`。
+
+  ```plaintext
+  MULTI
+  SET key1 "value1"
+  INCR counter
+  ```
+
+- **EXEC**
+  执行事务队列中的所有命令。若事务执行期间某个键被其他客户端修改（通过`WATCH`监控），则事务会失败。
+
+  ```plaintext
+  EXEC    # 执行上述SET和INCR命令
+  ```
+
+- **DISCARD**
+  取消当前事务，清空事务队列。
+
+  ```plaintext
+  DISCARD    # 取消事务
+  ```
+
+#### 2. 乐观锁机制
+
+- **WATCH key1 [key2 ...]**
+  监控一个或多个键，若在事务执行前这些键被其他客户端修改，则事务会失败。
+
+  ```plaintext
+  WATCH balance    # 监控余额
+  MULTI
+  DECRBY balance 100    # 扣款100
+  EXEC    # 若balance在WATCH后被修改，事务会失败（返回nil）
+  ```
+
+- **UNWATCH**
+  取消所有键的监控。
+
+  ```plaintext
+  UNWATCH    # 取消监控
+  ```
+
+### 七、命令总结表
+
+| 数据结构   | 常用命令                                                     |
+| ---------- | ------------------------------------------------------------ |
+| String     | SET, GET, INCR, DECR, MSET, MGET, SETNX, SETEX, GETSET       |
+| Hash       | HSET, HGET, HMSET, HMGET, HDEL, HLEN, HKEYS, HVALS, HGETALL  |
+| List       | LPUSH, RPUSH, LPOP, RPOP, LRANGE, LINDEX, LLEN, RPOPLPUSH, LREM |
+| Set        | SADD, SREM, SISMEMBER, SCARD, SMEMBERS, SINTER, SUNION, SDIFF, SPOP |
+| Sorted Set | ZADD, ZREM, ZSCORE, ZCARD, ZRANGE, ZREVRANGE, ZRANK, ZREVRANK |
+| 事务       | MULTI, EXEC, DISCARD, WATCH, UNWATCH                         |
+
+### 使用建议
+
+1. **String**：适合缓存、计数器、分布式锁等场景；
+2. **Hash**：适合存储对象（如用户信息），避免多次获取整个对象；
+3. **List**：适合实现队列、栈、消息列表等；
+4. **Set**：适合去重、交集并集运算（如共同好友）；
+5. **Sorted Set**：适合排行榜、热门列表等需要排序的场景；
+6. **事务**：适合原子性要求高的操作（如扣款 + 记账），但注意 Redis 事务不支持回滚。
 
 #### 3、redis底层结构
 
